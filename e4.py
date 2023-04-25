@@ -27,19 +27,19 @@ class XML_Tag:
 
 
 class State(Enum):
-    ZERO = 0
-    ONE = 1
-    TWO = 2
-    TWOONE = 3
-    THREE = 4
-    FOUR = 5
-    FIVE = 6
-    SIX = 7
-    SEVEN = 8
-    EIGHT = 9
-    NINE = 10
-    TEN = 11
-    ELEVEN = 12
+    START = 0
+    START_ELEMENT = 1
+    AFTER_ELEMENT_NAME = 2
+    NAMESPACE_ELEMENT = 3
+    START_ATTRIBUTE = 4
+    ATTRIBUTE_NAME = 5
+    EXPECTING_ATTRIBUTE_ASSIGNMENT = 6
+    ATTRIBUTE_VALUE = 7
+    END_ATTRIBUTE = 8
+    BODY = 9
+    INNER_ELEMENT = 10
+    EXPECTING_CLOSING_ELEMENT = 11
+    END_ELEMENT = 12
 
 
 def panic():
@@ -47,7 +47,7 @@ def panic():
     exit(1)
 
 
-def action0(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_wait_for_root(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 0
     while tokens[at + length].kind != TokenKind.PUNCTUATION or tokens[at].text != '<':
         length += 1
@@ -55,154 +55,154 @@ def action0(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML
     child = XML_Tag(tag)
     tag.children.append(child)
 
-    return State.ONE, at + length + 1, child
+    return State.START_ELEMENT, at + length + 1, child
 
 
-def action1(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_wait_for_element_name(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 0
     if tokens[at].kind == TokenKind.SPACE:
         length += 1
 
     if tokens[at + length].kind == TokenKind.WORD:
         tag.name += tokens[at + length].text
-        return State.TWO, at + length + 1, tag
+        return State.AFTER_ELEMENT_NAME, at + length + 1, tag
 
     panic()
 
 
-def action2(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_look_after_element_name(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
         tag.name += tokens[at].text
-        return State.TWOONE, at + length, tag
+        return State.NAMESPACE_ELEMENT, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE:
-        return State.THREE, at + length, tag
+        return State.START_ATTRIBUTE, at + length, tag
     elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
-        return State.EIGHT, at + length, tag
+        return State.BODY, at + length, tag
 
     panic()
 
 
-def action21(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_expect_namespace_element_name(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.WORD:
         tag.name += tokens[at].text
-        return State.TWO, at + length, tag
+        return State.AFTER_ELEMENT_NAME, at + length, tag
 
     panic()
 
 
-def action3(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_look_for_attributes(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.WORD:
         tag._current_attribute += tokens[at].text
-        return State.FOUR, at + length, tag
+        return State.ATTRIBUTE_NAME, at + length, tag
     elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
-        return State.EIGHT, at + length, tag
+        return State.BODY, at + length, tag
 
     panic()
 
 
-def action4(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_look_for_attribute_assignment(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
         tag._current_attribute += tokens[at].text
-        return State.THREE, at + length, tag
+        return State.START_ATTRIBUTE, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE:
-        return State.FIVE, at + length, tag
+        return State.EXPECTING_ATTRIBUTE_ASSIGNMENT, at + length, tag
     elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '=':
-        return State.SIX, at + length, tag
+        return State.ATTRIBUTE_VALUE, at + length, tag
 
     panic()
 
 
-def action5(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_expect_attribute_assignment(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '=':
-        return State.SIX, at + length, tag
+        return State.ATTRIBUTE_VALUE, at + length, tag
 
     panic()
 
 
-def action6(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_expect_attribute_value(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.QUOTATION:
         tag.attributes[tag._current_attribute] = tokens[at].text[1:-1]
         tag._current_attribute = ''
-        return State.SEVEN, at + length, tag
+        return State.END_ATTRIBUTE, at + length, tag
 
     panic()
 
 
-def action7(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_after_attribute(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.SPACE:
-        return State.THREE, at + length, tag
+        return State.START_ATTRIBUTE, at + length, tag
     elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
-        return State.EIGHT, at + length, tag
+        return State.BODY, at + length, tag
 
     panic()
 
 
-def action8(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_body(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 0
     while tokens[at + length].kind != TokenKind.PUNCTUATION or tokens[at + length].text != '<':
         tag.text += tokens[at + length].text
         length += 1
 
-    return State.NINE, at + length + 1, tag
+    return State.INNER_ELEMENT, at + length + 1, tag
 
 
-def action9(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_inspect_inner_tag(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '/':
-        return State.TEN, at + length, tag
+        return State.EXPECTING_CLOSING_ELEMENT, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE or tokens[at].kind == TokenKind.WORD:
         child = XML_Tag(tag)
         tag.children.append(child)
-        return State.ONE, at, child
+        return State.START_ELEMENT, at, child
 
     panic()
 
 
-def action10(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_expect_element_name(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.WORD:
-        return State.ELEVEN, at + length, tag
+        return State.END_ELEMENT, at + length, tag
 
     panic()
 
 
-def action11(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+def action_look_for_element_end(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
         # TODO assert that closing tag is the same as the opening one
-        return State.EIGHT, at + length, tag.parent
+        return State.BODY, at + length, tag.parent
     elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
-        return State.TEN, at + length, tag
+        return State.EXPECTING_CLOSING_ELEMENT, at + length, tag
 
     panic()
 
 
-ACTIONS = (action0,
-           action1,
-           action2,
-           action21,
-           action3,
-           action4,
-           action5,
-           action6,
-           action7,
-           action8,
-           action9,
-           action10,
-           action11)
+ACTIONS = (action_wait_for_root,
+           action_wait_for_element_name,
+           action_look_after_element_name,
+           action_expect_namespace_element_name,
+           action_look_for_attributes,
+           action_look_for_attribute_assignment,
+           action_expect_attribute_assignment,
+           action_expect_attribute_value,
+           action_after_attribute,
+           action_body,
+           action_inspect_inner_tag,
+           action_expect_element_name,
+           action_look_for_element_end)
 
 
 def parse(xml: str):
     tokens = toke.parse_tokens(xml)
     at = 0
-    state = State.ZERO
+    state = State.START
     tag = XML_Tag(None)
     while at < len(tokens):
         state, at, tag = ACTIONS[state.value](tokens, at, tag)
