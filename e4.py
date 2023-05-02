@@ -45,6 +45,7 @@ class State(Enum):
 
 def panic():
     print('Panic!')
+    breakpoint()
     exit(1)
 
 
@@ -127,6 +128,8 @@ def action_expecting_attribute_assignment(tokens: list[Token], at: int, tag: XML
 
 def action_attribute_value(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
+    if tokens[at].kind == TokenKind.SPACE:
+        return State.ATTRIBUTE_VALUE, at + length, tag
     if tokens[at].kind == TokenKind.QUOTATION:
         tag.attributes[tag._current_attribute] = tokens[at].text[1:-1]
         tag._current_attribute = ''
