@@ -39,7 +39,8 @@ class State(Enum):
     BODY = 9
     INNER_ELEMENT = 10
     EXPECTING_CLOSING_ELEMENT = 11
-    END_ELEMENT = 12
+    EXPECTING_END_ELEMENT = 12
+    END_ELEMENT = 13
 
 
 def panic():
@@ -168,6 +169,19 @@ def action_inner_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[St
 def action_expecting_closing_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.WORD:
+        return State.EXPECTING_END_ELEMENT, at + length, tag
+
+    panic()
+
+
+def action_expecting_end_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
+    length = 1
+    if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
+        # TODO assert that closing tag is the same as the opening one
+        return State.BODY, at + length, tag.parent
+    elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
+        return State.EXPECTING_CLOSING_ELEMENT, at + length, tag
+    elif tokens[at].kind == TokenKind.SPACE:
         return State.END_ELEMENT, at + length, tag
 
     panic()
@@ -178,8 +192,6 @@ def action_end_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[Stat
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
         # TODO assert that closing tag is the same as the opening one
         return State.BODY, at + length, tag.parent
-    elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
-        return State.EXPECTING_CLOSING_ELEMENT, at + length, tag
 
     panic()
 
@@ -196,17 +208,18 @@ ACTIONS = (action_start,
            action_body,
            action_inner_element,
            action_expecting_closing_element,
+           action_expecting_end_element,
            action_end_element)
 
 
-def parse(xml: str):
+def parse(xml: str) -> XML_Tag:
     tokens = toke.parse_tokens(xml)
     at = 0
     state = State.START
     tag = XML_Tag(None)
     while at < len(tokens):
         state, at, tag = ACTIONS[state.value](tokens, at, tag)
-        print(tag)
+    return tag.children[0]
 
 
 def main() -> int:
