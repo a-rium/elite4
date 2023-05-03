@@ -1,9 +1,9 @@
 from __future__ import annotations
-from toke import Token, TokenKind
+from toke import parse_tokens, Token, TokenKind
 from enum import Enum
 
-import toke
 import dataclasses
+import io
 
 
 class BadFormat(Exception):
@@ -226,7 +226,7 @@ ACTIONS = (action_start,
 
 
 def parse(xml: str) -> XML_Tag:
-    tokens = toke.parse_tokens(xml)
+    tokens = parse_tokens(xml)
     at = 0
     state = State.START
     tag = XML_Tag(None)
@@ -235,10 +235,24 @@ def parse(xml: str) -> XML_Tag:
     return tag.children[0]
 
 
-def main() -> int:
-    parse('<ws:notification type="urgent" ws:priority="1"> abcd<example></example>efgh </ws:notification>')
-    return 0
+def dump_tag(tag: XML_Tag, out: io.StringIO, nindentation: int, indentation: str):
+    inside = tag.name
+    if tag.attributes:
+        inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in tag.attributes.items()))
+    out.write(f'{indentation * nindentation}<{inside}>')
 
 
-if __name__ == '__main__':
-    raise SystemExit(main())
+def dump(root: XML_Tag, out: io.StringIO, /, newline=True, indentation='\t', nindentation=0):
+    dump_tag(root, out, nindentation, indentation)
+    if newline:
+        out.write('\n')
+    if root.text:
+        out.write((indentation * (nindentation + 1)) + root.text)
+        if newline:
+            out.write('\n')
+    if root.children:
+        for child in root.children:
+            dump(child, out, nindentation=nindentation + 1, indentation=indentation, newline=newline)
+        if newline:
+            out.write('\n')
+    out.write(f'{indentation * nindentation}</{root.name}>')
