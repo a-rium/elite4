@@ -10,12 +10,11 @@ def assert_element(element, /, name, nchildren, attributes, text):
 
 def test_single_element():
     element = parse('<element > body </element >')
-    # TODO body must start and end with non-whitespace character
     assert_element(element,
                    name='element',
                    nchildren=0,
                    attributes={},
-                   text=' body ')
+                   text='body')
 
 
 def test_attributes():

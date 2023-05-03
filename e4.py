@@ -152,6 +152,7 @@ def action_body(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int,
     while tokens[at + length].kind != TokenKind.PUNCTUATION or tokens[at + length].text != '<':
         tag.text += tokens[at + length].text
         length += 1
+    tag.text = tag.text.strip()
 
     return State.INNER_ELEMENT, at + length + 1, tag
 
