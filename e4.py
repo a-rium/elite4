@@ -45,7 +45,6 @@ class State(Enum):
 
 def panic():
     print('Panic!')
-    breakpoint()
     exit(1)
 
 
