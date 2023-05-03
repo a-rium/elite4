@@ -79,7 +79,7 @@ def action_start_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[St
 
 def action_after_element_name(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
-    if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
+    if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text in {':', '-', '.'}:
         tag.name += tokens[at].text
         return State.NAMESPACE_ELEMENT, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE:
@@ -112,7 +112,7 @@ def action_start_attribute(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[
 
 def action_attribute_name(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
-    if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
+    if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text in {':', '-', '.'}:
         tag._current_attribute += tokens[at].text
         return State.START_ATTRIBUTE, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE:
@@ -190,7 +190,7 @@ def action_expecting_end_element(tokens: list[Token], at: int, tag: XML_Tag) -> 
         if tag._closing_name != tag.name:
             raise BadFormat(f'Expected closing tag of {tag.name}, found: {tag._closing_name}')
         return State.BODY, at + length, tag.parent
-    elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
+    elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text in {':', '-', '.'}:
         tag._closing_name += tokens[at].text
         return State.EXPECTING_CLOSING_ELEMENT, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE:

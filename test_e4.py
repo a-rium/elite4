@@ -46,6 +46,63 @@ def test_nested_namespace():
                    text='Body')
 
 
+def test_element_with_dashes():
+    element = parse('<special-element>Special!</special-element>')
+    assert_element(element,
+                   name='special-element',
+                   nchildren=0,
+                   attributes={},
+                   text='Special!')
+
+
+def test_attribute_with_dashes():
+    element = parse('<element element-status="normal">Normal!</element>')
+    assert_element(element,
+                   name='element',
+                   nchildren=0,
+                   attributes={'element-status': 'normal'},
+                   text='Normal!')
+
+
+def test_element_with_periods():
+    element = parse('<special.element>Special!</special.element>')
+    assert_element(element,
+                   name='special.element',
+                   nchildren=0,
+                   attributes={},
+                   text='Special!')
+
+
+def test_attribute_with_periods():
+    element = parse('<element element.status="normal">Normal!</element>')
+    assert_element(element,
+                   name='element',
+                   nchildren=0,
+                   attributes={'element.status': 'normal'},
+                   text='Normal!')
+
+
+def test_sub_elements():
+    element = parse('<element xmlns="http://my.default.namespace.org" kind="string" xmlns:sub2="http://sub2.namespace.org"><sub-element.text>Body</sub-element.text><sub2:sub-element.text sub2:source="testfile">Second Body</sub2:sub-element.text></element>')
+    assert_element(element,
+                   name='element',
+                   nchildren=2,
+                   attributes={'xmlns': 'http://my.default.namespace.org', 'kind': 'string', 'xmlns:sub2': 'http://sub2.namespace.org'},
+                   text='')
+    subelement = element.children[0]
+    assert_element(subelement,
+                   name='sub-element.text',
+                   nchildren=0,
+                   attributes={},
+                   text='Body')
+    subelement2 = element.children[1]
+    assert_element(subelement2,
+                   name='sub2:sub-element.text',
+                   nchildren=0,
+                   attributes={'sub2:source': 'testfile'},
+                   text='Second Body')
+
+
 def test_failure_mismatching_tags_no_space():
     with pytest.raises(BadFormat):
         parse('<element> </other>')
@@ -54,24 +111,3 @@ def test_failure_mismatching_tags_no_space():
 def test_failure_mismatching_tags_space():
     with pytest.raises(BadFormat):
         parse('<element> </other >')
-
-
-def test_sub_elements():
-    element = parse('<element xmlns="http://my.default.namespace.org" kind="string" xmlns:sub2="http://sub2.namespace.org"><subelement>Body</subelement><sub2:subelement sub2:source="testfile">Second Body</sub2:subelement></element>')
-    assert_element(element,
-                   name='element',
-                   nchildren=2,
-                   attributes={'xmlns': 'http://my.default.namespace.org', 'kind': 'string', 'xmlns:sub2': 'http://sub2.namespace.org'},
-                   text='')
-    subelement = element.children[0]
-    assert_element(subelement,
-                   name='subelement',
-                   nchildren=0,
-                   attributes={},
-                   text='Body')
-    subelement2 = element.children[1]
-    assert_element(subelement2,
-                   name='sub2:subelement',
-                   nchildren=0,
-                   attributes={'sub2:source': 'testfile'},
-                   text='Second Body')
