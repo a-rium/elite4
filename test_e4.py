@@ -1,4 +1,6 @@
-from e4 import parse
+from e4 import parse, BadFormat
+
+import pytest
 
 
 def assert_element(element, /, name, nchildren, attributes, text):
@@ -27,12 +29,31 @@ def test_attributes():
 
 
 def test_nondefault_namespace():
-    element = parse('<my:element xmlns:xs="http://my.namespace.org" my:kind = "string">Body</my:namespace >')
+    element = parse('<my:element xmlns:my="http://my.namespace.org" my:kind = "string">Body</my:element >')
     assert_element(element,
                    name='my:element',
                    nchildren=0,
-                   attributes={'xmlns:xs': 'http://my.namespace.org', 'my:kind': 'string'},
+                   attributes={'xmlns:my': 'http://my.namespace.org', 'my:kind': 'string'},
                    text='Body')
+
+
+def test_nested_namespace():
+    element = parse('<my:other:element xmlns:my:other="http://my.namespace.org" my:other:kind = "string">Body</my:other:element >')
+    assert_element(element,
+                   name='my:other:element',
+                   nchildren=0,
+                   attributes={'xmlns:my:other': 'http://my.namespace.org', 'my:other:kind': 'string'},
+                   text='Body')
+
+
+def test_failure_mismatching_tags_no_space():
+    with pytest.raises(BadFormat):
+        parse('<element> </other>')
+
+
+def test_failure_mismatching_tags_space():
+    with pytest.raises(BadFormat):
+        parse('<element> </other >')
 
 
 def test_sub_elements():

@@ -6,6 +6,10 @@ import toke
 import dataclasses
 
 
+class BadFormat(Exception):
+    pass
+
+
 @dataclasses.dataclass
 class XML_Tag:
     name: str
@@ -15,6 +19,7 @@ class XML_Tag:
     children: list[XML_Tag]
     parent: XML_Tag
     _current_attribute: str
+    _closing_name: str
 
     def __init__(self, parent):
         self.name = ''
@@ -24,6 +29,7 @@ class XML_Tag:
         self.children = []
         self.parent = parent
         self._current_attribute = ''
+        self._closing_name = ''
 
 
 class State(Enum):
@@ -172,6 +178,7 @@ def action_inner_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[St
 def action_expecting_closing_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.WORD:
+        tag._closing_name += tokens[at].text
         return State.EXPECTING_END_ELEMENT, at + length, tag
 
     panic()
@@ -180,11 +187,15 @@ def action_expecting_closing_element(tokens: list[Token], at: int, tag: XML_Tag)
 def action_expecting_end_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
-        # TODO assert that closing tag is the same as the opening one
+        if tag._closing_name != tag.name:
+            raise BadFormat(f'Expected closing tag of {tag.name}, found: {tag._closing_name}')
         return State.BODY, at + length, tag.parent
     elif tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == ':':
+        tag._closing_name += tokens[at].text
         return State.EXPECTING_CLOSING_ELEMENT, at + length, tag
     elif tokens[at].kind == TokenKind.SPACE:
+        if tag._closing_name != tag.name:
+            raise BadFormat(f'Expected closing tag of {tag.name}, found: {tag._closing_name}')
         return State.END_ELEMENT, at + length, tag
 
     panic()
@@ -193,7 +204,6 @@ def action_expecting_end_element(tokens: list[Token], at: int, tag: XML_Tag) -> 
 def action_end_element(tokens: list[Token], at: int, tag: XML_Tag) -> tuple[State, int, XML_Tag]:
     length = 1
     if tokens[at].kind == TokenKind.PUNCTUATION and tokens[at].text == '>':
-        # TODO assert that closing tag is the same as the opening one
         return State.BODY, at + length, tag.parent
 
     panic()
