@@ -259,8 +259,8 @@ def dump(root: XML_Tag, out: io.StringIO, /, newline, indentation, nindentation)
     if root.children:
         for child in root.children:
             dump(child, out, nindentation=nindentation + 1, indentation=indentation, newline=newline)
-        if newline:
-            out.write('\n')
+            if newline:
+                out.write('\n')
     out.write(f'{indentation * nindentation}</{root.name}>')
 
 
