@@ -10,6 +10,15 @@ def assert_element(element, /, name, nchildren, attributes, text):
     assert element.text == text
 
 
+def test_empty_element():
+    element = parse('<element></element>')
+    assert_element(element,
+                   name='element',
+                   nchildren=0,
+                   attributes={},
+                   text='')
+
+
 def test_single_element():
     element = parse('<element > body </element >')
     assert_element(element,
