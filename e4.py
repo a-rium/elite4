@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import io
 import string
+import itertools
 
 
 @dataclasses.dataclass
@@ -242,8 +243,8 @@ def parse(xml: str) -> XML_Document:
 
 def dump_tag(tag: XML_Tag, out: io.StringIO, nindentation: int, indentation: str):
     inside = tag.name
-    if tag.attributes:
-        inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in tag.attributes.items()))
+    if tag.attributes or tag.namespaces:
+        inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in itertools.chain(tag.attributes.items(), tag.namespaces.items())))
     out.write(f'{indentation * nindentation}<{inside}>')
 
 
