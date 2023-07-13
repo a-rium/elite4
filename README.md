@@ -1,3 +1,2 @@
 # Elite4: Easy Ecs Em El
-TODO:
-- Add support for underscores in attribute names.
+Elite4 aims to fast, compliant XML parser with a very simple API.
