@@ -3,7 +3,6 @@ from __future__ import annotations
 import dataclasses
 import io
 import string
-import itertools
 
 
 @dataclasses.dataclass
@@ -109,7 +108,6 @@ def parse_start_tag(text: str, at: int, parent: XML_Tag) -> tuple[XML_Tag, bool,
         current += 1
         tagname, current, parsed = parse_name(text, current)
         attributes: dict[str, str] = {}
-        namespaces: dict[str, str] = {}
         if parsed:
             while True:
                 _, current, parsed = parse_white_space(text, current)
@@ -120,10 +118,7 @@ def parse_start_tag(text: str, at: int, parent: XML_Tag) -> tuple[XML_Tag, bool,
                     break
 
                 # TODO(Compliance): verify that the attribute/namespace has not been already added
-                if attribute.key.startswith('xmlns'):
-                    namespaces[attribute.key] = attribute.value
-                else:
-                    attributes[attribute.key] = attribute.value
+                attributes[attribute.key] = attribute.value
 
             _, current, _ = parse_white_space(text, current)
             empty_tag = text[current] == '/'
@@ -135,7 +130,6 @@ def parse_start_tag(text: str, at: int, parent: XML_Tag) -> tuple[XML_Tag, bool,
                 tag = XML_Tag(parent)
                 tag.name = tagname
                 tag.attributes = attributes
-                tag.namespaces = namespaces
 
     return tag, empty_tag, current, ok
 
@@ -222,7 +216,6 @@ class XML_Document:
 class XML_Tag:
     name: str
     attributes: dict[str, str]
-    namespaces: dict[str, str]
     text: str
     children: list[XML_Tag]
     parent: XML_Tag
@@ -230,7 +223,6 @@ class XML_Tag:
     def __init__(self, parent):
         self.name = ''
         self.attributes = {}
-        self.namespaces = {}
         self.text = ''
         self.children = []
         self.parent = parent
@@ -243,8 +235,8 @@ def parse(xml: str) -> XML_Document:
 
 def dump_tag(tag: XML_Tag, out: io.StringIO, nindentation: int, indentation: str):
     inside = tag.name
-    if tag.attributes or tag.namespaces:
-        inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in itertools.chain(tag.attributes.items(), tag.namespaces.items())))
+    if tag.attributes:
+        inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in tag.attributes.items()))
     out.write(f'{indentation * nindentation}<{inside}>')
 
 

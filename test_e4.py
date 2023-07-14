@@ -1,11 +1,10 @@
 from e4 import parse
 
 
-def assert_element(element, /, name, nchildren, attributes, namespaces, text):
+def assert_element(element, /, name, nchildren, attributes, text):
     assert element.name == name
     assert len(element.children) == nchildren
     assert element.attributes == attributes
-    assert element.namespaces == namespaces
     assert element.text.strip() == text
 
 
@@ -15,7 +14,6 @@ def test_empty_element():
                    name='element',
                    nchildren=0,
                    attributes={},
-                   namespaces={},
                    text='')
 
 
@@ -25,7 +23,6 @@ def test_single_element():
                    name='element',
                    nchildren=0,
                    attributes={},
-                   namespaces={},
                    text='body')
 
 
@@ -35,7 +32,6 @@ def test_attributes():
                    name='element',
                    nchildren=0,
                    attributes={'kind': 'string'},
-                   namespaces={},
                    text='Body')
 
 
@@ -44,8 +40,7 @@ def test_nondefault_namespace():
     assert_element(element.root,
                    name='my:element',
                    nchildren=0,
-                   attributes={'my:kind': 'string'},
-                   namespaces={'xmlns:my': 'http://my.namespace.org'},
+                   attributes={'my:kind': 'string', 'xmlns:my': 'http://my.namespace.org'},
                    text='Body')
 
 
@@ -54,8 +49,7 @@ def test_nested_namespace():
     assert_element(element.root,
                    name='my:other:element',
                    nchildren=0,
-                   attributes={'my:other:kind': 'string'},
-                   namespaces={'xmlns:my:other': 'http://my.namespace.org'},
+                   attributes={'my:other:kind': 'string', 'xmlns:my:other': 'http://my.namespace.org'},
                    text='Body')
 
 
@@ -65,7 +59,6 @@ def test_element_with_dashes():
                    name='special-element',
                    nchildren=0,
                    attributes={},
-                   namespaces={},
                    text='Special!')
 
 
@@ -75,7 +68,6 @@ def test_attribute_with_dashes():
                    name='element',
                    nchildren=0,
                    attributes={'element-status': 'normal'},
-                   namespaces={},
                    text='Normal!')
 
 
@@ -85,7 +77,6 @@ def test_element_with_periods():
                    name='special.element',
                    nchildren=0,
                    attributes={},
-                   namespaces={},
                    text='Special!')
 
 
@@ -95,7 +86,6 @@ def test_attribute_with_periods():
                    name='element',
                    nchildren=0,
                    attributes={'element.status': 'normal'},
-                   namespaces={},
                    text='Normal!')
 
 
@@ -104,22 +94,19 @@ def test_sub_elements():
     assert_element(element.root,
                    name='element',
                    nchildren=2,
-                   attributes={'kind': 'string'},
-                   namespaces={'xmlns': 'http://my.default.namespace.org', 'xmlns:sub2': 'http://sub2.namespace.org'},
+                   attributes={'kind': 'string', 'xmlns': 'http://my.default.namespace.org', 'xmlns:sub2': 'http://sub2.namespace.org'},
                    text='')
     subelement = element.root.children[0]
     assert_element(subelement,
                    name='sub-element.text',
                    nchildren=0,
                    attributes={},
-                   namespaces={},
                    text='Body')
     subelement2 = element.root.children[1]
     assert_element(subelement2,
                    name='sub2:sub-element.text',
                    nchildren=0,
                    attributes={'sub2:source': 'testfile'},
-                   namespaces={},
                    text='Second Body')
 
 
