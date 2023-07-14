@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import io
 import string
 
 
@@ -9,6 +8,43 @@ import string
 class Attribute:
     key: str
     value: str
+
+
+class XML_Document:
+    def __init__(self, root: XML_Tag):
+        self.root = root
+
+
+@dataclasses.dataclass
+class XML_Tag:
+    name: str
+    attributes: dict[str, str]
+    text: list[str]
+    children: list[XML_Tag]
+    parent: XML_Tag
+
+    def __init__(self, parent):
+        self.name = ''
+        self.attributes = {}
+        self.text = []
+        self.children = []
+        self.parent = parent
+
+
+def normalize_end_of_line(content: str) -> str:
+    at = 0
+    normalized = ''
+    while at < len(content):
+        if content[at] in {'\x85', '\u2028'}:
+            normalized += '\x0A'
+        elif content[at] == '\x0D':
+            if at + 1 < len(content) and content[at + 1] in {'\x0A', '\x85'}:
+                at += 1
+            normalized += '\x0A'
+        else:
+            normalized += content[at]
+        at += 1
+    return normalized
 
 
 # See https://www.w3.org/TR/xml/#NT-S
@@ -139,11 +175,10 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
     current = at
     ok = True
 
-    # TODO(Compliance): element content should be normalized ex. whitespaces should be removed / deduplicated
     data, current, ok = parse_char_data(text, current)
     if ok:
         # TODO(Compliance): keep content segments separated
-        current_tag.text += data
+        current_tag.text.append(normalize_end_of_line(data))
         while True:
             child, new_current, parsed = parse_element(text, current, current_tag)
             if parsed:
@@ -153,11 +188,12 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
                 # TODO(Compliance): add support for References, CDSects, PIs and Comments
                 pass
 
-            # TODO(Compliance): element content should be normalized ex. whitespaces should be removed / deduplicated
-            data, current, ok = parse_char_data(text, current)
-            # TODO(Compliance): keep content segments separated
-            if not ok:
-                break
+            if parsed:
+                data, current, ok = parse_char_data(text, current)
+                # TODO(Compliance): keep content segments separated
+                if not ok:
+                    break
+                current_tag.text.append(normalize_end_of_line(data))
             # TODO(Improvement): is the forward lookup required?
             if current + 1 < len(text) and text[current:current + 2] == '</':
                 break
@@ -205,57 +241,6 @@ def parse_document(text: str, at=0) -> tuple[XML_Document, int, bool]:
     return document, current, ok
 
 
-# raise XMLSyntaxException(f'expected tag name while parsing start-tag, got: {tagname}')
-
-class XML_Document:
-    def __init__(self, root: XML_Tag):
-        self.root = root
-
-
-@dataclasses.dataclass
-class XML_Tag:
-    name: str
-    attributes: dict[str, str]
-    text: str
-    children: list[XML_Tag]
-    parent: XML_Tag
-
-    def __init__(self, parent):
-        self.name = ''
-        self.attributes = {}
-        self.text = ''
-        self.children = []
-        self.parent = parent
-
-
 def parse(xml: str) -> XML_Document:
     document, _, _ = parse_document(xml)
     return document
-
-
-def dump_tag(tag: XML_Tag, out: io.StringIO, nindentation: int, indentation: str):
-    inside = tag.name
-    if tag.attributes:
-        inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in tag.attributes.items()))
-    out.write(f'{indentation * nindentation}<{inside}>')
-
-
-def dump(root: XML_Tag, out: io.StringIO, /, newline, indentation, nindentation):
-    dump_tag(root, out, nindentation, indentation)
-    if root.children:
-        if newline:
-            out.write('\n')
-        out.write((indentation * (nindentation + 1)) + root.text)
-        if newline:
-            out.write('\n')
-        for child in root.children:
-            dump(child, out, nindentation=nindentation + 1, indentation=indentation, newline=newline)
-            if newline:
-                out.write('\n')
-    else:
-        out.write(root.text)
-    out.write(f'{indentation * nindentation}</{root.name}>')
-
-
-def dump_document(document: XML_Document, out: io.StringIO, /, newline=True, indentation='\t', nindentation=0):
-    dump(document.root, out, newline=newline, indentation=indentation, nindentation=nindentation)
