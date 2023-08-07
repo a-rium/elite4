@@ -10,8 +10,16 @@ class Attribute:
     value: str
 
 
+@dataclasses.dataclass
+class XML_Declaration:
+    version: str
+    encoding: str
+    standalone: bool
+
+
 class XML_Document:
-    def __init__(self, root: XML_Tag):
+    def __init__(self, declaration: XML_Declaration, root: XML_Tag):
+        self.declaration = declaration
         self.root = root
 
 
@@ -229,15 +237,57 @@ def parse_element(text: str, at: int, parent: XML_Tag) -> [XML_Tag, int, bool]:
     return element, current, ok
 
 
+# See https://www.w3.org/TR/xml/#NT-XMLDecl
+def parse_xml_declaration(text: str, at: int) -> tuple[XML_Declaration, int, bool]:
+    declaration: XML_Declaration = None
+    current = at
+    ok = True
+
+    if text[current:current + 5] == '<?xml':
+        ok = False
+        current += 5
+        _, current, parsed = parse_white_space(text, current)
+        if parsed:
+            attribute, current, parsed = parse_attribute(text, current)
+            if parsed and attribute.key == 'version':
+                # Todo(Compliance): validate version value according to spec.
+                version = attribute.value
+                _, current, ok = parse_white_space(text, current)
+                if ok:
+
+                    # Todo(Compliance): in case the standalone attribute is not declared,
+                    # - if an external entity reference is found, then it is assumed as false
+                    # - otherwise it is assumed as true
+                    standalone = None
+                    encoding = None
+
+                    attribute, current, parsed = parse_attribute(text, current)
+                    if parsed and attribute.key == 'encoding':
+                        encoding = attribute.value
+                        _, current, ok = parse_white_space(text, current)
+                        attribute, current, parsed = parse_attribute(text, current)
+                    if parsed and attribute.key == 'standalone' and attribute.value in {'yes', 'no'}:
+                        standalone = True if attribute.value == 'yes' else False
+                    _, current, _ = parse_white_space(text, current)
+                    ok = text[current:current + 2] == '?>'
+                    if ok:
+                        current += 2
+                        declaration = XML_Declaration(version=version, encoding=encoding, standalone=standalone)
+
+    return declaration, current, ok
+
+
 # See https://www.w3.org/TR/xml/#NT-document
 # TODO(Compliance): add support for prolog and Misc
 def parse_document(text: str, at=0) -> tuple[XML_Document, int, bool]:
     document = None
 
     current = at
+    # Todo(Compliance) parse prolog instead
+    declaration, current, ok = parse_xml_declaration(text, current)
     root, current, ok = parse_element(text, current, None)
     if ok:
-        document = XML_Document(root)
+        document = XML_Document(declaration, root)
     return document, current, ok
 
 
