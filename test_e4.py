@@ -1,11 +1,13 @@
-from e4 import parse
+from e4 import parse, parse_xml_declaration
 
 
 def assert_element(element, /, name, nchildren, attributes, text):
     assert element.name == name
     assert len(element.children) == nchildren
     assert element.attributes == attributes
-    assert element.text.strip() == text
+    # Todo(Correctness) test for fragments instead of joining and stripping
+    assert ''.join(element.text).strip() == text
+
 
 
 def test_empty_element():
@@ -109,6 +111,44 @@ def test_sub_elements():
                    attributes={'sub2:source': 'testfile'},
                    text='Second Body')
 
+
+def test_parse_document_with_xml_declaration():
+    document = parse('<?xml version="1.0" ?><element property="a"> abcd </element>')
+    assert document.declaration.version == '1.0'
+    assert_element(document.root,
+                   name='element',
+                   nchildren=0,
+                   attributes={'property': 'a'},
+                   text='abcd')
+
+
+def test_parse_xml_declaration_with_encoding():
+    declaration, _, ok = parse_xml_declaration('<?xml version="1.0" encoding="utf-8"?>', 0)
+    assert ok
+    assert declaration.version == '1.0'
+    assert declaration.encoding == 'utf-8'
+
+
+def test_parse_xml_declaration_with_standalone_no():
+    declaration, _, ok = parse_xml_declaration('<?xml version="1.0" standalone="no"?>', 0)
+    assert ok
+    assert declaration.version == '1.0'
+    assert not declaration.standalone
+
+
+def test_parse_xml_declaration_with_standalone_yes():
+    declaration, _, ok = parse_xml_declaration('<?xml version="1.0" standalone="yes"?>', 0)
+    assert ok
+    assert declaration.version == '1.0'
+    assert declaration.standalone
+
+
+def test_parse_full_xml_declaration():
+    declaration, _, ok = parse_xml_declaration('<?xml version="1.0" encoding="utf-16" standalone="yes"?>', 0)
+    assert ok
+    assert declaration.version == '1.0'
+    assert declaration.encoding == 'utf-16'
+    assert declaration.standalone
 
 # def test_failure_mismatching_tags_no_space():
 #     with pytest.raises(BadFormat):
