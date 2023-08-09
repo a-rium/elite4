@@ -285,6 +285,7 @@ def parse_document(text: str, at=0) -> tuple[XML_Document, int, bool]:
     current = at
     # Todo(Compliance) parse prolog instead
     declaration, current, ok = parse_xml_declaration(text, current)
+    _, current, _ = parse_white_space(text, current)
     root, current, ok = parse_element(text, current, None)
     if ok:
         document = XML_Document(declaration, root)
