@@ -86,6 +86,20 @@ def parse_char_data(text: str, at: int) -> tuple[str, int, bool]:
     return text[at:current], current, ok
 
 
+# See https://www.w3.org/TR/xml/#NT-EntityRef
+# Todo: a parsed entity should probably be an object in and of itself
+def parse_entity_reference(text: str, at: int) -> tuple[str, int, bool]:
+    current = at
+    ok = False
+    if text[current] == '&':
+        current += 1
+        entity_name, current, parsed = parse_name(text, current)
+        if parsed and text[current] == ';':
+            current += 1
+            ok = True
+    return text[at:current], current, ok
+
+
 # See https://www.w3.org/TR/xml/#NT-Name
 # TODO(Compliance):  add support for spec-allowed Unicode encoded characters
 # TODO(Performance): turn allowed chars list into strings
@@ -193,6 +207,11 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
                 current = new_current
                 current_tag.children.append(child)
             else:
+                entity, new_current, parsed = parse_entity_reference(text, current)
+                if parsed:
+                    current = new_current
+                    # Todo: entity should probably be an object in and of itself
+                    current_tag.text.append(entity)
                 # TODO(Compliance): add support for References, CDSects, PIs and Comments
                 pass
 

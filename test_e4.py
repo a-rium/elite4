@@ -113,7 +113,7 @@ def test_sub_elements():
 
 
 def test_parse_document_with_xml_declaration():
-    document = parse('<?xml version="1.0" ?><element property="a"> abcd </element>')
+    document = parse('<?xml version="1.0" ?> <element property="a"> abcd </element>')
     assert document.declaration.version == '1.0'
     assert_element(document.root,
                    name='element',
@@ -149,6 +149,16 @@ def test_parse_full_xml_declaration():
     assert declaration.version == '1.0'
     assert declaration.encoding == 'utf-16'
     assert declaration.standalone
+
+
+def test_parse_entity_reference():
+    element = parse('<element>&quot;&quot;</element>')
+    assert_element(element.root,
+                   name='element',
+                   nchildren=0,
+                   attributes={},
+                   text='&quot;&quot;')
+
 
 # def test_failure_mismatching_tags_no_space():
 #     with pytest.raises(BadFormat):
