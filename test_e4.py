@@ -1,4 +1,4 @@
-from e4 import parse, parse_xml_declaration
+from e4 import parse, parse_xml_declaration, XML_FragmentType
 
 
 def assert_element(element, /, name, nchildren, attributes, text):
@@ -151,6 +151,17 @@ def test_parse_full_xml_declaration():
     assert declaration.standalone
 
 
+def test_parse_char_reference():
+    element = parse('<element>&#123;&#xabeD1;</element>')
+    assert_element(element.root,
+                   name='element',
+                   nchildren=0,
+                   attributes={},
+                   text='&#123;&#xabeD1;')
+    assert element.root.fragments[0].kind == XML_FragmentType.CHAR_REFERENCE
+    assert element.root.fragments[1].kind == XML_FragmentType.CHAR_REFERENCE
+
+
 def test_parse_entity_reference():
     element = parse('<element>&quot;&quot;</element>')
     assert_element(element.root,
@@ -158,6 +169,8 @@ def test_parse_entity_reference():
                    nchildren=0,
                    attributes={},
                    text='&quot;&quot;')
+    assert element.root.fragments[0].kind == XML_FragmentType.ENTITY_REFERENCE
+    assert element.root.fragments[1].kind == XML_FragmentType.ENTITY_REFERENCE
 
 
 # def test_failure_mismatching_tags_no_space():

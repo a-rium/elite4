@@ -107,7 +107,6 @@ def parse_char_data(text: str, at: int) -> tuple[str, int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-EntityRef
-# Todo: a parsed entity should probably be an object in and of itself
 def parse_entity_reference(text: str, at: int) -> tuple[str, int, bool]:
     current = at
     ok = False
@@ -118,6 +117,46 @@ def parse_entity_reference(text: str, at: int) -> tuple[str, int, bool]:
             current += 1
             ok = True
     return text[at:current], current, ok
+
+
+# See https://www.w3.org/TR/xml/#NT-CharRef
+# TODO(Performance): turn allowed chars list into strings
+def parse_char_reference(text: str, at: int) -> tuple[str, int, bool]:
+    current = at
+    ok = False
+    if current + 1 < len(text) and text[current:current + 2] == '&#':
+        current += 2
+        if text[current] == 'x':
+            current += 1
+            allowed_chars = [*list(string.digits), 'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F']
+        else:
+            allowed_chars = [*list(string.digits)]
+
+        parsed = False
+        while current < len(text) - 1 and text[current] in allowed_chars:
+            current += 1
+            parsed = True
+
+        if parsed and text[current] == ';':
+            current += 1
+            ok = True
+
+    return text[at:current], current, ok
+
+
+# See https://www.w3.org/TR/xml/#NT-Reference
+def parse_reference(text: str, at: int) -> tuple[str, int, bool, XML_FragmentType]:
+    current = at
+    ok = False
+    kind = XML_FragmentType.CHAR_REFERENCE
+    reference, new_current, parsed = parse_char_reference(text, current)
+    if not parsed:
+        kind = XML_FragmentType.ENTITY_REFERENCE
+        reference, new_current, parsed = parse_entity_reference(text, current)
+
+    ok = parsed
+    current = new_current
+    return reference, current, ok, kind
 
 
 # See https://www.w3.org/TR/xml/#NT-Name
@@ -219,28 +258,30 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
 
     data, current, ok = parse_char_data(text, current)
     if ok:
-        # TODO(Compliance): keep content segments separated
-        current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalize_end_of_line(data)))
+        normalized_data = normalize_end_of_line(data)
+        if len(normalized_data) > 0:
+            current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
         while True:
             child, new_current, parsed = parse_element(text, current, current_tag)
             if parsed:
                 current = new_current
                 current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.ELEMENT, data=child))
             else:
-                entity, new_current, parsed = parse_entity_reference(text, current)
+                entity, new_current, parsed, kind = parse_reference(text, current)
                 if parsed:
                     current = new_current
                     # Todo: entity should probably be an object in and of itself
-                    current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.ENTITY_REFERENCE, data=entity))
+                    current_tag.fragments.append(XML_Fragment(kind=kind, data=entity))
                 # TODO(Compliance): add support for References, CDSects, PIs and Comments
                 pass
 
             if parsed:
                 data, current, ok = parse_char_data(text, current)
-                # TODO(Compliance): keep content segments separated
                 if not ok:
                     break
-                current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalize_end_of_line(data)))
+                normalized_data = normalize_end_of_line(data)
+                if len(normalized_data) > 0:
+                    current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
             # TODO(Improvement): is the forward lookup required?
             if current + 1 < len(text) and text[current:current + 2] == '</':
                 break
