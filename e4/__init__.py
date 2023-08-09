@@ -256,12 +256,16 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
     current = at
     ok = True
 
-    data, current, ok = parse_char_data(text, current)
-    if ok:
+    while True:
+        data, current, parsed = parse_char_data(text, current)
+        if not parsed:
+            ok = False
+            break
+
         normalized_data = normalize_end_of_line(data)
         if len(normalized_data) > 0:
             current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
-        while True:
+        else:
             child, new_current, parsed = parse_element(text, current, current_tag)
             if parsed:
                 current = new_current
@@ -270,21 +274,12 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
                 entity, new_current, parsed, kind = parse_reference(text, current)
                 if parsed:
                     current = new_current
-                    # Todo: entity should probably be an object in and of itself
                     current_tag.fragments.append(XML_Fragment(kind=kind, data=entity))
-                # TODO(Compliance): add support for References, CDSects, PIs and Comments
-                pass
+                    # TODO(Compliance): add support for CDSects, PIs and Comments
 
-            if parsed:
-                data, current, ok = parse_char_data(text, current)
-                if not ok:
-                    break
-                normalized_data = normalize_end_of_line(data)
-                if len(normalized_data) > 0:
-                    current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
-            # TODO(Improvement): is the forward lookup required?
-            if current + 1 < len(text) and text[current:current + 2] == '</':
-                break
+        # TODO(Improvement): is the forward lookup required?
+        if current + 1 < len(text) and text[current:current + 2] == '</':
+            break
     return current, ok
 
 
