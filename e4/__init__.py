@@ -120,17 +120,15 @@ def parse_entity_reference(text: str, at: int) -> tuple[str, int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-CharRef
-# TODO(Performance): turn allowed chars list into strings
 def parse_char_reference(text: str, at: int) -> tuple[str, int, bool]:
     current = at
     ok = False
     if current + 1 < len(text) and text[current:current + 2] == '&#':
         current += 2
+        allowed_chars = string.digits
         if text[current] == 'x':
             current += 1
-            allowed_chars = [*list(string.digits), 'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F']
-        else:
-            allowed_chars = [*list(string.digits)]
+            allowed_chars += 'abcdefABCDEF'
 
         parsed = False
         while current < len(text) - 1 and text[current] in allowed_chars:
@@ -161,13 +159,12 @@ def parse_reference(text: str, at: int) -> tuple[str, int, bool, XML_FragmentTyp
 
 # See https://www.w3.org/TR/xml/#NT-Name
 # TODO(Compliance):  add support for spec-allowed Unicode encoded characters
-# TODO(Performance): turn allowed chars list into strings
 def parse_name(text: str, at: int) -> tuple[str, int, bool]:
-    allowed_first_chars = [':', '_', *list(string.ascii_letters)]
-    allowed_non_first_chars = [':', '_', *list(string.ascii_letters), *list(string.digits), '-', '.']
+    allowed_first_chars = f':_{string.ascii_letters}'
+    allowed_non_first_chars = f'{allowed_first_chars}{string.digits}-.'
 
     current = at
-    ok = text[at] in allowed_first_chars
+    ok = text[current] in allowed_first_chars
     if ok:
         current = at + 1
         while current < len(text):
