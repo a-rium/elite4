@@ -1,7 +1,22 @@
 from __future__ import annotations
+from typing import Union
 
 import dataclasses
 import string
+import enum
+
+
+class XML_FragmentType(enum.Enum):
+    ELEMENT = enum.auto()
+    CHAR_DATA = enum.auto()
+    ENTITY_REFERENCE = enum.auto()
+    CHAR_REFERENCE = enum.auto()
+
+
+@dataclasses.dataclass
+class XML_Fragment:
+    kind: XML_FragmentType
+    data: Union[str, XML_Tag]
 
 
 @dataclasses.dataclass
@@ -23,20 +38,25 @@ class XML_Document:
         self.root = root
 
 
-@dataclasses.dataclass
 class XML_Tag:
     name: str
     attributes: dict[str, str]
-    text: list[str]
-    children: list[XML_Tag]
+    fragments: list[XML_Fragment]
     parent: XML_Tag
 
     def __init__(self, parent):
         self.name = ''
         self.attributes = {}
-        self.text = []
-        self.children = []
+        self.fragments = []
         self.parent = parent
+
+    @property
+    def children(self):
+        return [fragment.data for fragment in self.fragments if fragment.kind == XML_FragmentType.ELEMENT]
+
+    @property
+    def text(self):
+        return [fragment.data for fragment in self.fragments if fragment.kind in {XML_FragmentType.CHAR_DATA, XML_FragmentType.CHAR_REFERENCE, XML_FragmentType.ENTITY_REFERENCE}]
 
 
 def normalize_end_of_line(content: str) -> str:
@@ -200,18 +220,18 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
     data, current, ok = parse_char_data(text, current)
     if ok:
         # TODO(Compliance): keep content segments separated
-        current_tag.text.append(normalize_end_of_line(data))
+        current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalize_end_of_line(data)))
         while True:
             child, new_current, parsed = parse_element(text, current, current_tag)
             if parsed:
                 current = new_current
-                current_tag.children.append(child)
+                current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.ELEMENT, data=child))
             else:
                 entity, new_current, parsed = parse_entity_reference(text, current)
                 if parsed:
                     current = new_current
                     # Todo: entity should probably be an object in and of itself
-                    current_tag.text.append(entity)
+                    current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.ENTITY_REFERENCE, data=entity))
                 # TODO(Compliance): add support for References, CDSects, PIs and Comments
                 pass
 
@@ -220,7 +240,7 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
                 # TODO(Compliance): keep content segments separated
                 if not ok:
                     break
-                current_tag.text.append(normalize_end_of_line(data))
+                current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalize_end_of_line(data)))
             # TODO(Improvement): is the forward lookup required?
             if current + 1 < len(text) and text[current:current + 2] == '</':
                 break
