@@ -13,6 +13,14 @@ def insert_child(parent: XML_Tag, index: int, child: XML_Tag):
     parent.fragments.insert(index, XML_Fragment(kind=XML_FragmentType.ELEMENT, data=child))
 
 
+def append_text(parent: XML_Tag, text: str):
+    insert_text(parent, len(parent.fragments), text)
+
+
+def insert_text(parent: XML_Tag, index: int, text: str):
+    parent.fragments.insert(index, XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=text))
+
+
 def find_first(node: XML_Tag, condition: Callable[[XML_Fragment], bool]) -> XML_Fragment:
     first, _ = find_first_with_index(node, condition)
     return first
