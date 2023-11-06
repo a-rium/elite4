@@ -173,6 +173,15 @@ def test_parse_entity_reference():
     assert element.root.fragments[1].kind == XML_FragmentType.ENTITY_REFERENCE
 
 
+def test_body_with_unencoded_unicode_characters():
+    element = parse('<element> è \u2603 </element>')
+    assert_element(element.root,
+                   name='element',
+                   nchildren=0,
+                   attributes={},
+                   text='è \u2603')
+
+
 # def test_failure_mismatching_tags_no_space():
 #     with pytest.raises(BadFormat):
 #         parse('<element> </other>')
