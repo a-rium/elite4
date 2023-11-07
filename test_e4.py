@@ -1,4 +1,4 @@
-from e4 import parse, parse_xml_declaration, XML_FragmentType
+from e4 import parse, parse_xml_declaration, FragmentType
 
 
 def assert_element(element, /, name, nchildren, attributes, text):
@@ -7,7 +7,6 @@ def assert_element(element, /, name, nchildren, attributes, text):
     assert element.attributes == attributes
     # Todo(Correctness) test for fragments instead of joining and stripping
     assert ''.join(element.text).strip() == text
-
 
 
 def test_empty_element():
@@ -158,8 +157,8 @@ def test_parse_char_reference():
                    nchildren=0,
                    attributes={},
                    text='&#123;&#xabeD1;')
-    assert element.root.fragments[0].kind == XML_FragmentType.CHAR_REFERENCE
-    assert element.root.fragments[1].kind == XML_FragmentType.CHAR_REFERENCE
+    assert element.root.fragments[0].kind == FragmentType.CHAR_REFERENCE
+    assert element.root.fragments[1].kind == FragmentType.CHAR_REFERENCE
 
 
 def test_parse_entity_reference():
@@ -169,8 +168,8 @@ def test_parse_entity_reference():
                    nchildren=0,
                    attributes={},
                    text='&quot;&quot;')
-    assert element.root.fragments[0].kind == XML_FragmentType.ENTITY_REFERENCE
-    assert element.root.fragments[1].kind == XML_FragmentType.ENTITY_REFERENCE
+    assert element.root.fragments[0].kind == FragmentType.ENTITY_REFERENCE
+    assert element.root.fragments[1].kind == FragmentType.ENTITY_REFERENCE
 
 
 def test_body_with_unencoded_unicode_characters():

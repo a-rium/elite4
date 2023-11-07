@@ -6,7 +6,7 @@ import string
 import enum
 
 
-class XML_FragmentType(enum.Enum):
+class FragmentType(enum.Enum):
     ELEMENT = enum.auto()
     CHAR_DATA = enum.auto()
     ENTITY_REFERENCE = enum.auto()
@@ -14,9 +14,9 @@ class XML_FragmentType(enum.Enum):
 
 
 @dataclasses.dataclass
-class XML_Fragment:
-    kind: XML_FragmentType
-    data: Union[str, XML_Element]
+class Fragment:
+    kind: FragmentType
+    data: Union[str, Element]
 
 
 @dataclasses.dataclass
@@ -26,23 +26,23 @@ class Attribute:
 
 
 @dataclasses.dataclass
-class XML_Declaration:
+class Declaration:
     version: str
     encoding: str
     standalone: bool
 
 
-class XML_Document:
-    def __init__(self, declaration: XML_Declaration, root: XML_Element):
+class Document:
+    def __init__(self, declaration: Declaration, root: Element):
         self.declaration = declaration
         self.root = root
 
 
-class XML_Element:
+class Element:
     name: str
     attributes: dict[str, str]
-    fragments: list[XML_Fragment]
-    parent: XML_Element
+    fragments: list[Fragment]
+    parent: Element
 
     def __init__(self, parent):
         self.name = ''
@@ -52,11 +52,11 @@ class XML_Element:
 
     @property
     def children(self):
-        return [fragment.data for fragment in self.fragments if fragment.kind == XML_FragmentType.ELEMENT]
+        return [fragment.data for fragment in self.fragments if fragment.kind == FragmentType.ELEMENT]
 
     @property
     def text(self):
-        return [fragment.data for fragment in self.fragments if fragment.kind in {XML_FragmentType.CHAR_DATA, XML_FragmentType.CHAR_REFERENCE, XML_FragmentType.ENTITY_REFERENCE}]
+        return [fragment.data for fragment in self.fragments if fragment.kind in {FragmentType.CHAR_DATA, FragmentType.CHAR_REFERENCE, FragmentType.ENTITY_REFERENCE}]
 
 
 def normalize_end_of_line(content: str) -> str:
@@ -143,13 +143,13 @@ def parse_char_reference(text: str, at: int) -> tuple[str, int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-Reference
-def parse_reference(text: str, at: int) -> tuple[str, int, bool, XML_FragmentType]:
+def parse_reference(text: str, at: int) -> tuple[str, int, bool, FragmentType]:
     current = at
     ok = False
-    kind = XML_FragmentType.CHAR_REFERENCE
+    kind = FragmentType.CHAR_REFERENCE
     reference, new_current, parsed = parse_char_reference(text, current)
     if not parsed:
-        kind = XML_FragmentType.ENTITY_REFERENCE
+        kind = FragmentType.ENTITY_REFERENCE
         reference, new_current, parsed = parse_entity_reference(text, current)
 
     ok = parsed
@@ -212,7 +212,7 @@ def parse_attribute(text: str, at: int) -> tuple[Attribute, int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-STag
-def parse_start_tag(text: str, at: int, parent: XML_Element) -> tuple[XML_Element, bool, int, bool]:
+def parse_start_tag(text: str, at: int, parent: Element) -> tuple[Element, bool, int, bool]:
     element = None
 
     current = at
@@ -241,7 +241,7 @@ def parse_start_tag(text: str, at: int, parent: XML_Element) -> tuple[XML_Elemen
             ok = text[current] == '>'
             if ok:
                 current += 1
-                element = XML_Element(parent)
+                element = Element(parent)
                 element.name = element_name
                 element.attributes = attributes
 
@@ -249,7 +249,7 @@ def parse_start_tag(text: str, at: int, parent: XML_Element) -> tuple[XML_Elemen
 
 
 # See https://www.w3.org/TR/xml/#NT-current
-def parse_content(text: str, at: int, current_element: XML_Element, _recursive_call=False) -> tuple[int, bool]:
+def parse_content(text: str, at: int, current_element: Element, _recursive_call=False) -> tuple[int, bool]:
     current = at
     ok = True
 
@@ -261,17 +261,17 @@ def parse_content(text: str, at: int, current_element: XML_Element, _recursive_c
 
         normalized_data = normalize_end_of_line(data)
         if len(normalized_data) > 0:
-            current_element.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
+            current_element.fragments.append(Fragment(kind=FragmentType.CHAR_DATA, data=normalized_data))
         else:
             child, new_current, parsed = parse_element(text, current, current_element)
             if parsed:
                 current = new_current
-                current_element.fragments.append(XML_Fragment(kind=XML_FragmentType.ELEMENT, data=child))
+                current_element.fragments.append(Fragment(kind=FragmentType.ELEMENT, data=child))
             else:
                 entity, new_current, parsed, kind = parse_reference(text, current)
                 if parsed:
                     current = new_current
-                    current_element.fragments.append(XML_Fragment(kind=kind, data=entity))
+                    current_element.fragments.append(Fragment(kind=kind, data=entity))
                     # TODO(Compliance): add support for CDSects, PIs and Comments
 
         # TODO(Improvement): is the forward lookup required?
@@ -281,7 +281,7 @@ def parse_content(text: str, at: int, current_element: XML_Element, _recursive_c
 
 
 # See https://www.w3.org/TR/xml/#NT-ETag
-def parse_end_tag(text: str, at: int, current_element: XML_Element) -> tuple[int, bool]:
+def parse_end_tag(text: str, at: int, current_element: Element) -> tuple[int, bool]:
     current = at
     ok = current + 1 < len(text) and text[current:current + 2] == '</'
     if ok:
@@ -297,7 +297,7 @@ def parse_end_tag(text: str, at: int, current_element: XML_Element) -> tuple[int
 
 
 # See https://www.w3.org/TR/xml/#NT-element
-def parse_element(text: str, at: int, parent: XML_Element) -> [XML_Element, int, bool]:
+def parse_element(text: str, at: int, parent: Element) -> [Element, int, bool]:
     current = at
 
     element, empty_element, current, ok = parse_start_tag(text, current, parent)
@@ -310,8 +310,8 @@ def parse_element(text: str, at: int, parent: XML_Element) -> [XML_Element, int,
 
 
 # See https://www.w3.org/TR/xml/#NT-XMLDecl
-def parse_xml_declaration(text: str, at: int) -> tuple[XML_Declaration, int, bool]:
-    declaration: XML_Declaration = None
+def parse_xml_declaration(text: str, at: int) -> tuple[Declaration, int, bool]:
+    declaration: Declaration = None
     current = at
     ok = True
 
@@ -344,14 +344,14 @@ def parse_xml_declaration(text: str, at: int) -> tuple[XML_Declaration, int, boo
                     ok = text[current:current + 2] == '?>'
                     if ok:
                         current += 2
-                        declaration = XML_Declaration(version=version, encoding=encoding, standalone=standalone)
+                        declaration = Declaration(version=version, encoding=encoding, standalone=standalone)
 
     return declaration, current, ok
 
 
 # See https://www.w3.org/TR/xml/#NT-document
 # TODO(Compliance): add support for prolog and Misc
-def parse_document(text: str, at=0) -> tuple[XML_Document, int, bool]:
+def parse_document(text: str, at=0) -> tuple[Document, int, bool]:
     document = None
 
     current = at
@@ -360,10 +360,10 @@ def parse_document(text: str, at=0) -> tuple[XML_Document, int, bool]:
     _, current, _ = parse_white_space(text, current)
     root, current, ok = parse_element(text, current, None)
     if ok:
-        document = XML_Document(declaration, root)
+        document = Document(declaration, root)
     return document, current, ok
 
 
-def parse(xml: str) -> XML_Document:
+def parse(xml: str) -> Document:
     document, _, _ = parse_document(xml)
     return document
