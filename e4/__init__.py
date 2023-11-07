@@ -44,10 +44,10 @@ class Element:
     fragments: list[Fragment]
     parent: Element
 
-    def __init__(self, parent):
-        self.name = ''
-        self.attributes = {}
-        self.fragments = []
+    def __init__(self, *, name: str = '', attributes: dict[str, str] = None, fragments: list[Element] = None, parent=None):
+        self.name = name
+        self.attributes = attributes if attributes is not None else dict()
+        self.fragments = fragments if fragments is not None else []
         self.parent = parent
 
     @property
@@ -241,7 +241,7 @@ def parse_start_tag(text: str, at: int, parent: Element) -> tuple[Element, bool,
             ok = text[current] == '>'
             if ok:
                 current += 1
-                element = Element(parent)
+                element = Element(parent=parent)
                 element.name = element_name
                 element.attributes = attributes
 
