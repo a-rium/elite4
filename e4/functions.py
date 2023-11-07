@@ -11,6 +11,7 @@ def append_child(parent: Element, child: Element):
 
 def insert_child(parent: Element, index: int, child: Element):
     parent.fragments.insert(index, Fragment(kind=FragmentType.ELEMENT, data=child))
+    child.parent = parent
 
 
 def append_text(parent: Element, text: str):
