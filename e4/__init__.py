@@ -16,7 +16,7 @@ class XML_FragmentType(enum.Enum):
 @dataclasses.dataclass
 class XML_Fragment:
     kind: XML_FragmentType
-    data: Union[str, XML_Tag]
+    data: Union[str, XML_Element]
 
 
 @dataclasses.dataclass
@@ -33,16 +33,16 @@ class XML_Declaration:
 
 
 class XML_Document:
-    def __init__(self, declaration: XML_Declaration, root: XML_Tag):
+    def __init__(self, declaration: XML_Declaration, root: XML_Element):
         self.declaration = declaration
         self.root = root
 
 
-class XML_Tag:
+class XML_Element:
     name: str
     attributes: dict[str, str]
     fragments: list[XML_Fragment]
-    parent: XML_Tag
+    parent: XML_Element
 
     def __init__(self, parent):
         self.name = ''
@@ -212,15 +212,15 @@ def parse_attribute(text: str, at: int) -> tuple[Attribute, int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-STag
-def parse_start_tag(text: str, at: int, parent: XML_Tag) -> tuple[XML_Tag, bool, int, bool]:
-    tag = None
+def parse_start_tag(text: str, at: int, parent: XML_Element) -> tuple[XML_Element, bool, int, bool]:
+    element = None
 
     current = at
     ok = False
-    empty_tag = False
+    empty_element = False
     if text[current] == '<':
         current += 1
-        tagname, current, parsed = parse_name(text, current)
+        element_name, current, parsed = parse_name(text, current)
         attributes: dict[str, str] = {}
         if parsed:
             while True:
@@ -235,21 +235,21 @@ def parse_start_tag(text: str, at: int, parent: XML_Tag) -> tuple[XML_Tag, bool,
                 attributes[attribute.key] = attribute.value
 
             _, current, _ = parse_white_space(text, current)
-            empty_tag = text[current] == '/'
-            if empty_tag:
+            empty_element = text[current] == '/'
+            if empty_element:
                 current += 1
             ok = text[current] == '>'
             if ok:
                 current += 1
-                tag = XML_Tag(parent)
-                tag.name = tagname
-                tag.attributes = attributes
+                element = XML_Element(parent)
+                element.name = element_name
+                element.attributes = attributes
 
-    return tag, empty_tag, current, ok
+    return element, empty_element, current, ok
 
 
 # See https://www.w3.org/TR/xml/#NT-current
-def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=False) -> tuple[int, bool]:
+def parse_content(text: str, at: int, current_element: XML_Element, _recursive_call=False) -> tuple[int, bool]:
     current = at
     ok = True
 
@@ -261,17 +261,17 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
 
         normalized_data = normalize_end_of_line(data)
         if len(normalized_data) > 0:
-            current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
+            current_element.fragments.append(XML_Fragment(kind=XML_FragmentType.CHAR_DATA, data=normalized_data))
         else:
-            child, new_current, parsed = parse_element(text, current, current_tag)
+            child, new_current, parsed = parse_element(text, current, current_element)
             if parsed:
                 current = new_current
-                current_tag.fragments.append(XML_Fragment(kind=XML_FragmentType.ELEMENT, data=child))
+                current_element.fragments.append(XML_Fragment(kind=XML_FragmentType.ELEMENT, data=child))
             else:
                 entity, new_current, parsed, kind = parse_reference(text, current)
                 if parsed:
                     current = new_current
-                    current_tag.fragments.append(XML_Fragment(kind=kind, data=entity))
+                    current_element.fragments.append(XML_Fragment(kind=kind, data=entity))
                     # TODO(Compliance): add support for CDSects, PIs and Comments
 
         # TODO(Improvement): is the forward lookup required?
@@ -281,13 +281,13 @@ def parse_content(text: str, at: int, current_tag: XML_Tag, _recursive_call=Fals
 
 
 # See https://www.w3.org/TR/xml/#NT-ETag
-def parse_end_tag(text: str, at: int, current_tag: XML_Tag) -> tuple[int, bool]:
+def parse_end_tag(text: str, at: int, current_element: XML_Element) -> tuple[int, bool]:
     current = at
     ok = current + 1 < len(text) and text[current:current + 2] == '</'
     if ok:
         current += 2
-        tagname, current, ok = parse_name(text, current)
-        ok = True if ok and current_tag.name == tagname else False
+        element_name, current, ok = parse_name(text, current)
+        ok = True if ok and current_element.name == element_name else False
         if ok:
             _, current, _ = parse_white_space(text, current)
             ok = text[current] == '>'
@@ -297,11 +297,11 @@ def parse_end_tag(text: str, at: int, current_tag: XML_Tag) -> tuple[int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-element
-def parse_element(text: str, at: int, parent: XML_Tag) -> [XML_Tag, int, bool]:
+def parse_element(text: str, at: int, parent: XML_Element) -> [XML_Element, int, bool]:
     current = at
 
-    element, empty_tag, current, ok = parse_start_tag(text, current, parent)
-    if ok and not empty_tag:
+    element, empty_element, current, ok = parse_start_tag(text, current, parent)
+    if ok and not empty_element:
         current, ok = parse_content(text, current, element)
         if ok:
             current, ok = parse_end_tag(text, current, element)

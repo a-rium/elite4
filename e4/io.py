@@ -1,9 +1,9 @@
 import io
 
-from ..e4 import XML_Tag, XML_Document, XML_FragmentType
+from ..e4 import XML_Element, XML_Document, XML_FragmentType
 
 
-def dump_tag(tag: XML_Tag, out: io.StringIO):
+def dump_tag(tag: XML_Element, out: io.StringIO):
     inside = tag.name
     if tag.attributes:
         inside += ' ' + ' '.join((f'{key}="{value}"' for key, value in tag.attributes.items()))
@@ -13,7 +13,7 @@ def dump_tag(tag: XML_Tag, out: io.StringIO):
         out.write(f'<{inside}/>')
 
 
-def dump(root: XML_Tag, out: io.StringIO):
+def dump(root: XML_Element, out: io.StringIO):
     dump_tag(root, out)
     if root.fragments:
         for fragment in root.fragments:
