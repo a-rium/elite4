@@ -201,10 +201,15 @@ def parse_attribute_value(text: str, at: int) -> tuple[str, int, bool]:
     ok = False
     quote = text[at]
     if quote in ['"', "'"]:
-        not_allowed_chars = f'<&{quote}'
+        not_allowed_chars = f'<{quote}'
 
         current += 1
         while current < len(text):
+            if text[current] == '&':
+                _, new_current, parsed, _ = parse_reference(text, current)
+                if not parsed:
+                    break
+                current = new_current
             if text[current] in not_allowed_chars:
                 ok = text[current] == quote
                 current += 1
