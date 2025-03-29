@@ -286,6 +286,7 @@ def parse_comment(text: str, at: int) -> tuple[str, bool, int]:
             
             comment = text[at:current]
             break
+
     return comment, ok, current
 
 # See https://www.w3.org/TR/xml/#NT-STag
@@ -325,7 +326,7 @@ def parse_start_tag(text: str, at: int, parent: Element) -> tuple[Element, bool,
     return element, empty_element, current, ok
 
 
-# See https://www.w3.org/TR/xml/#NT-current
+# See https://www.w3.org/TR/xml/#NT-content
 def parse_content(text: str, at: int, current_element: Element, _recursive_call=False) -> tuple[int, bool]:
     current = at
     ok = True
