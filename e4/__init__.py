@@ -195,7 +195,6 @@ def parse_name(text: str, at: int) -> tuple[str, int, bool]:
 
 
 # See https://www.w3.org/TR/xml/#NT-AttValue
-# TODO(Compliance): add support for References
 def parse_attribute_value(text: str, at: int) -> tuple[str, int, bool]:
     current = at
     ok = False
