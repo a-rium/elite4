@@ -59,6 +59,26 @@ class Element:
         return [fragment.data for fragment in self.fragments if fragment.kind in {FragmentType.CHAR_DATA, FragmentType.CHAR_REFERENCE, FragmentType.ENTITY_REFERENCE}]
 
 
+def lineno(text: str, at: int) -> int:
+    return text.count('\n', 0, at) + 1
+
+
+def columnno(text: str, at: int) -> int:
+    last_newline = text.rfind('\n', 0, at)
+    if last_newline < 0:
+        last_newline = 0
+    return at - last_newline
+
+
+def textposition(text: str, at: int) -> (int, int):
+    return (lineno(text, at), columnno(text, at))
+
+
+def printp(fmt: str, text: str, at: int):
+    line, column = textposition(text, at)
+    print(f'{line}:{column} {fmt}')
+
+
 def normalize_end_of_line(content: str) -> str:
     at = 0
     normalized = ''
