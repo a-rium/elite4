@@ -109,6 +109,25 @@ def parse_white_space(text: str, at: int) -> tuple[str, int, bool]:
     return text[at:current], current, ok
 
 
+# See https://www.w3.org/TR/xml/#NT-Char
+def parse_char(text: str, at: int) -> tuple[str, bool, int]:
+    char = None
+
+    current = at
+
+    codepoint = ord(text[current])
+    ok = codepoint in (0x9, 0xA, 0xD) \
+            or (codepoint >= 0x20 and codepoint <=0xD7FF) \
+            or (codepoint >= 0xE000 and codepoint <=0xFFFD) \
+            or (codepoint >= 0x10000 and codepoint <= 0x10FFFF)
+
+    if ok:
+        char = text[current]
+        current += 1
+
+    return char, ok, current
+
+
 # See https://www.w3.org/TR/xml/#NT-CharData
 def parse_char_data(text: str, at: int) -> tuple[str, int, bool]:
     not_allowed_chars = '<&'
@@ -235,6 +254,40 @@ def parse_attribute(text: str, at: int) -> tuple[Attribute, int, bool]:
     return attribute, current, ok
 
 
+# See https://www.w3.org/TR/xml/#NT-Comment
+def parse_comment(text: str, at: int) -> tuple[str, bool, int]:
+    comment = None
+
+    current = at
+    ok = True
+    if text[current:current+4] == '<!--':
+        current += 4
+        while ok and current < len(text):
+            char, ok, current = parse_char(text, current)
+            if char != '-':
+                continue
+
+            if current == len(text):
+                ok = False
+                continue
+
+            char, ok, current = parse_char(text, current)
+            if char != '-':
+                continue
+
+            if current == len(text):
+                ok = False
+                continue
+
+            char, ok, current = parse_char(text, current)
+            if char != '>':
+                ok = False
+                continue
+            
+            comment = text[at:current]
+            break
+    return comment, ok, current
+
 # See https://www.w3.org/TR/xml/#NT-STag
 def parse_start_tag(text: str, at: int, parent: Element) -> tuple[Element, bool, int, bool]:
     element = None
@@ -296,7 +349,11 @@ def parse_content(text: str, at: int, current_element: Element, _recursive_call=
                 if parsed:
                     current = new_current
                     current_element.fragments.append(Fragment(kind=kind, data=entity))
-                    # TODO(Compliance): add support for CDSects, PIs and Comments
+                else:
+                    comment, parsed, new_current = parse_comment(text, current)
+                    if parsed:
+                        current = new_current
+                    # TODO(Compliance): add support for CDSects, PIs
 
         # TODO(Improvement): is the forward lookup required?
         if current + 1 < len(text) and text[current:current + 2] == '</':
