@@ -116,7 +116,7 @@ def parse_char_data(text: str, at: int) -> tuple[str, int, bool]:
     current = at
     ok = True
     while current < len(text):
-        if current + 2 < len(text) and text[current + 3] == ']]>':
+        if current + 2 < len(text) and text[current:current + 3] == ']]>':
             ok = False
             break
         if text[current] in not_allowed_chars:
