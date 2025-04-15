@@ -56,7 +56,7 @@ class Element:
 
     @property
     def text(self):
-        return [fragment.data for fragment in self.fragments if fragment.kind in {FragmentType.CHAR_DATA, FragmentType.CHAR_REFERENCE, FragmentType.ENTITY_REFERENCE}]
+        return ''.join([fragment.data for fragment in self.fragments if fragment.kind in {FragmentType.CHAR_DATA, FragmentType.CHAR_REFERENCE, FragmentType.ENTITY_REFERENCE}])
 
 
 def lineno(text: str, at: int) -> int:
