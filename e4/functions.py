@@ -31,3 +31,6 @@ def find_first_with_index(node: Element, condition: Callable[[Fragment], bool]) 
     for index, fragment in enumerate(node.fragments):
         if condition(fragment):
             return fragment, index
+    return None, -1
+
+
