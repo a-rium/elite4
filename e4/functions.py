@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..e4 import Element, Fragment, FragmentType
+from e4 import Element, Fragment, FragmentType
 
 from typing import Callable
 
@@ -34,3 +34,11 @@ def find_first_with_index(node: Element, condition: Callable[[Fragment], bool]) 
     return None, -1
 
 
+def find_first_child(node: Element, condition: Callable[[Fragment], bool]) -> Fragment:
+    first, _ = find_first_child_with_index(node, condition)
+    return first
+
+
+def find_first_child_with_index(node: Element, condition: Callable[[Fragment], bool]) -> tuple[Element, int]:
+    first, index = find_first_with_index(node, lambda fragment: fragment.kind == FragmentType.ELEMENT and condition(fragment))
+    return first.data if first is not None else None, index
